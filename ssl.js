@@ -4,7 +4,7 @@ require("greenlock-express")
   .init({
     packageRoot: __dirname,
     configDir: "./greenlock.d",
-    maintainerEmail: process.env.EMAIL || "hello@gotdiff.com",
+    maintainerEmail: process.env.EMAIL || "ruslanfg@protonmail.com",
     cluster: false,
   })
   // Serves on 80 and 443
