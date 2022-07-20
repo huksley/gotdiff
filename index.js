@@ -1,6 +1,5 @@
 const nano = require("nano");
 const http = require("http");
-const https = require("https");
 const path = require("path");
 const { cache } = require("./cache");
 const compareVersions = require("compare-versions");
@@ -13,64 +12,10 @@ const { logger } = require("./logger");
 const mime = require("mime-types");
 const semverInc = require("semver/functions/inc");
 const { build } = require("./build");
-
-const request = async (url, { method, body, headers }) => {
-  const payload = body ? JSON.stringify(body) : undefined;
-
-  logger.info("HTTP", method || "GET", url, payload ? "payload " + payload.length + " bytes" : "");
-
-  return new Promise((resolve, reject) => {
-    const req = https.request(
-      url,
-      {
-        timeout: 10000,
-        method: method || "GET",
-        headers: {
-          "User-Agent": "Mozilla 55 (like IE 6.0; created by huksley)",
-          ...(payload
-            ? {
-                "Content-Type": "application/json",
-                "Content-Length": payload.length,
-              }
-            : {}),
-          ...headers,
-        },
-      },
-      (res) => {
-        logger.verbose("Got response", res.statusCode, res.statusMessage);
-
-        // Collect body
-        let data = "";
-        res.on("data", function (chunk) {
-          data += chunk;
-        });
-
-        res.on("end", function () {
-          if (
-            res.headers["content-type"] === "application/json" ||
-            res.headers["content-type"].startsWith("application/json;")
-          ) {
-            data = JSON.parse(data);
-          }
-          res.body = data;
-          if (res.statusCode && res.statusCode >= 200 && res.statusCode <= 399) {
-            resolve(res);
-          } else {
-            logger.verbose("Reject", res.statusCode, data);
-            reject(res);
-          }
-        });
-      }
-    );
-    if (payload) {
-      req.write(payload);
-    }
-    req.end();
-  });
-};
+const { request } = require("./request");
 
 const handler = async (req, res) => {
-  if (req.url != "/api/health" && req.url != "/_log") {
+  if (req.url != "/api/health" && req.url != "/c" && !req.url.endsWith(".svg")) {
     const requestMs = Date.now();
     logger.info("HTTP ==> " + req.url);
     __end = res.end;
@@ -80,8 +25,21 @@ const handler = async (req, res) => {
     };
   }
 
-  const url = new URL(req.url, "http://localhost");
+  if (req.method === "POST" || req.method === "PATCH") {
+    const buffers = [];
+    for await (const chunk of req) {
+      buffers.push(chunk);
+    }
 
+    let data = Buffer.concat(buffers).toString();
+    if (req.headers["content-type"] === "application/json") {
+      data = JSON.parse(data);
+    }
+    logger.verbose("Incoming body", data.length, "byte");
+    req.body = data;
+  }
+
+  const url = new URL(req.url, "http://localhost");
   if (url.pathname === "/") {
     res.setHeader("Content-Type", "text/html");
     res.writeHead(200);
@@ -93,6 +51,22 @@ const handler = async (req, res) => {
             : '<script async defer src="http://localhost:35729/livereload.js"></script>',
       })
     );
+  } else if (url.pathname === "/c") {
+    logger.info("Sending analytics", req.body, "as", req.headers.host);
+    try {
+      await request("https://plausible.io/api/event", {
+        method: "POST",
+        body: req.body,
+        headers: {
+          Referrer: req.headers.host,
+        },
+      });
+    } catch (e) {
+      logger.warn("Failed", e?.message || String(e));
+    }
+    res.setHeader("Content-Type", "text/plain");
+    res.writeHead(200);
+    res.end("OK");
   } else if (url.pathname === "/json") {
     res.setHeader("Content-Type", "application/json");
     res.writeHead(200);
@@ -222,7 +196,7 @@ const handler = async (req, res) => {
       if (process.env.NODE_ENV === "production") {
         res.setHeader("Content-Type", "application/javascript");
         res.writeHead(200);
-        logger.info("Sending static build .build/index.js");
+        logger.verbose("Sending static build .build/index.js");
         res.end(fs.readFileSync(".build/index.js", { encoding: "utf-8" }));
       } else {
         logger.info("Building bundle");
@@ -248,12 +222,12 @@ const handler = async (req, res) => {
         // Ignore
       }
       if (stat) {
-        logger.info("Sending", file);
+        logger.verbose("Sending", file);
         res.setHeader("Content-Type", mime.lookup(file) || "application/octet-stream");
         res.writeHead(200);
         res.end(fs.readFileSync(file, { encoding: "utf-8" }));
       } else {
-        logger.info("Not found", file);
+        logger.warn("Not found", file);
         res.setHeader("Content-Type", "text/html");
         res.writeHead(404);
         res.end("Not found");

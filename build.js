@@ -10,7 +10,7 @@ const build = () =>
       `./node_modules/.bin/esbuild ./public/index.jsx --bundle \
                   --define:process.env.LOG_VERBOSE=\\"${process.env.LOG_VERBOSE}\\" \
                   --define:process.env.NODE_ENV=\\"${process.env.NODE_ENV || "development"}\\" \
-                  --sourcemap \
+                  --sourcemap ${process.env.NODE_ENV === "production" ? "--minify" : ""}\
                   --analyze \
                   --target=chrome100,firefox100,safari15`,
       { maxBuffer: 16 * 1024 * 1024, timeout: 10000 },
