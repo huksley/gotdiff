@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "redis": "docker rm -f redis-gotdiff && docker run -d --name redis-gotdiff -p 6379:6379 --rm redis:alpine",
+    "redis": "docker rm -f redis-gotdiff && docker run -d --name redis-gotdiff -p 127.0.0.1:6379:6379 --rm redis:alpine",
     "couchdb": "docker rm -f couchdb-gotdiff && docker run -d -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=123 --name couchdb-gotdiff -p 5984:5984 --rm couchdb:3",
     "replicate": "curl -u admin:123 -X POST http://localhost:5984/_replicate -d '{\"source\":\"https://replicate.npmjs.com/registry/\", \"target\":\"registry\", \"create_target\":true, \"continuous\": true}' -H \"Content-Type: application/json\"",
     "dev": "NODE_ENV=development nodemon -r ./livereload  -r dotenv/config -e js,json,jsx -i views/ -i public/ -i test/dump/",
