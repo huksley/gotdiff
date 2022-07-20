@@ -10,9 +10,9 @@ ejs.openDelimiter = "{";
 ejs.closeDelimiter = "}";
 const fs = require("fs");
 const { logger } = require("./logger");
-const exec = require("child_process").exec;
 const mime = require("mime-types");
 const semverInc = require("semver/functions/inc");
+const { build } = require("./build");
 
 const request = async (url, { method, body, headers }) => {
   const payload = body ? JSON.stringify(body) : undefined;
@@ -85,7 +85,14 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === "/") {
     res.setHeader("Content-Type", "text/html");
     res.writeHead(200);
-    res.end(ejs.render(fs.readFileSync("./views/index.ejs", { encoding: "utf-8" })));
+    res.end(
+      ejs.render(fs.readFileSync("./views/index.ejs", { encoding: "utf-8" }), {
+        livereload:
+          process.env.NODE_ENV === "production"
+            ? ""
+            : '<script async defer src="http://localhost:35729/livereload.js"></script>',
+      })
+    );
   } else if (url.pathname === "/json") {
     res.setHeader("Content-Type", "application/json");
     res.writeHead(200);
@@ -211,28 +218,27 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(302);
       res.end("OK");
     } else if (url.pathname === "/public/index.jsx") {
-      logger.info("Building bundle");
-      const st = Date.now();
-      exec(
-        `esbuild ./public/index.jsx --bundle \
-            --define:process.env.LOG_VERBOSE=\\"${process.env.LOG_VERBOSE}\\" \
-            --define:process.env.NODE_ENV=\\"${process.env.NODE_ENV || "development"}\\" \
-            --sourcemap \
-            --analyze \
-            --target=chrome100,firefox100,safari15`,
-        { maxBuffer: 16 * 1024 * 1024, timeout: 10000 },
-        (err, stdout, stderr) => {
-          if (err) {
-            logger.warn("Compilation failed", err?.code, stderr);
-          } else {
-            logger.info("Compiled in", Date.now() - st, "ms, size", stdout.length, "bytes");
+      logger.info(process.env.NODE_ENV);
+      if (process.env.NODE_ENV === "production") {
+        res.setHeader("Content-Type", "application/javascript");
+        res.writeHead(200);
+        logger.info("Sending static build .build/index.js");
+        res.end(fs.readFileSync(".build/index.js", { encoding: "utf-8" }));
+      } else {
+        logger.info("Building bundle");
+        build()
+          .then((output) => {
             res.setHeader("Content-Type", "application/javascript");
             res.writeHead(200);
-            res.end(stdout);
-            logger.info(stderr);
-          }
-        }
-      );
+            res.end(output);
+          })
+          .catch((e) => {
+            logger.warn("Failed to compile", e?.message || String(e));
+            res.setHeader("Content-Type", "text/plain");
+            res.writeHead(500);
+            res.end("Internal server error");
+          });
+      }
     } else {
       const file = path.resolve(__dirname, "public", url.pathname.substring(1));
       let stat = undefined;

@@ -245,8 +245,8 @@ root.render(
       <BrowserRouter>
         <div>
           <h1>
-            Gotdiff?{" "}
-            <button onClick={(_) => (window.location = "https://www.producthunt.com/posts/swarmia")}>
+            <a href="">Gotdiff?</a>{" "}
+            <button onClick={(_) => (window.location = "https://www.producthunt.com/posts/gotdiff")}>
               Check my project
             </button>
           </h1>
