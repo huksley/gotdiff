@@ -1,4 +1,4 @@
 {
   "defaults": {},
-  "sites": [{ "subject": "gotdiff.com", "altnames": ["www.gotdiff.com"] }]
+  "sites": [{ "subject": "gotdiff.com", "altnames": ["gotdiff.com", "www.gotdiff.com"] }]
 }

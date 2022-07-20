@@ -1,3 +1,6 @@
+process.env.NODE_ENV = "production";
+process.env.AWS_EXECUTION_ENV = "nodejs";
+require("dotenv/config");
 const { handler } = require("./index.js");
 
 require("greenlock-express")
