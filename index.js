@@ -69,7 +69,7 @@ const request = async (url, { method, body, headers }) => {
   });
 };
 
-const server = http.createServer(async (req, res) => {
+const handler = async (req, res) => {
   if (req.url != "/api/health" && req.url != "/_log") {
     const requestMs = Date.now();
     logger.info("HTTP ==> " + req.url);
@@ -260,9 +260,14 @@ const server = http.createServer(async (req, res) => {
       }
     }
   }
-});
+};
 
-server.listen(8080);
+let server = undefined;
+
+if (!process.env.AWS_EXECUTION_ENV) {
+  server = http.createServer(handler);
+  server.listen(process.env.PORT ? parseInt(process.env.PORT, 10) : 8080);
+}
 
 process.on("beforeExit", (code) => {
   logger.info("NodeJS exiting", code);
@@ -270,6 +275,13 @@ process.on("beforeExit", (code) => {
 
 process.on("SIGINT", (signal) => {
   logger.info("Caught interrupt signal", signal);
-  server.close();
+  if (server) {
+    server.close();
+  }
   process.exit(1);
 });
+
+module.exports = {
+  server,
+  handler,
+};
