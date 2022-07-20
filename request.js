@@ -3,8 +3,25 @@ const { logger } = require("./logger");
 
 const request = async (url, { method, body, headers }) => {
   const payload = body ? JSON.stringify(body) : undefined;
+  headers = {
+    "User-Agent": "Mozilla 55 (like IE 6.0; created by huksley)",
+    ...(payload
+      ? {
+          "Content-Type": "application/json",
+          "Content-Length": payload.length,
+        }
+      : {}),
+    ...headers,
+  };
 
-  logger.info("HTTP", method || "GET", url, payload ? "payload " + payload.length + " bytes" : "");
+  logger.verbose(
+    "HTTP",
+    method || "GET",
+    url,
+    payload ? "payload " + payload.length + " bytes" : "",
+    ", headers",
+    headers
+  );
 
   return new Promise((resolve, reject) => {
     const req = https.request(
@@ -12,16 +29,7 @@ const request = async (url, { method, body, headers }) => {
       {
         timeout: 10000,
         method: method || "GET",
-        headers: {
-          "User-Agent": "Mozilla 55 (like IE 6.0; created by huksley)",
-          ...(payload
-            ? {
-                "Content-Type": "application/json",
-                "Content-Length": payload.length,
-              }
-            : {}),
-          ...headers,
-        },
+        headers,
       },
       (res) => {
         logger.verbose("Got response", res.statusCode, res.statusMessage);

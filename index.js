@@ -10,7 +10,6 @@ ejs.closeDelimiter = "}";
 const fs = require("fs");
 const { logger } = require("./logger");
 const mime = require("mime-types");
-const semverInc = require("semver/functions/inc");
 const { build } = require("./build");
 const { request } = require("./request");
 
@@ -51,22 +50,6 @@ const handler = async (req, res) => {
             : '<script async defer src="http://localhost:35729/livereload.js"></script>',
       })
     );
-  } else if (url.pathname === "/c") {
-    logger.info("Sending analytics", req.body, "as", req.headers.host);
-    try {
-      await request("https://plausible.io/api/event", {
-        method: "POST",
-        body: req.body,
-        headers: {
-          Referrer: req.headers.host,
-        },
-      });
-    } catch (e) {
-      logger.warn("Failed", e?.message || String(e));
-    }
-    res.setHeader("Content-Type", "text/plain");
-    res.writeHead(200);
-    res.end("OK");
   } else if (url.pathname === "/json") {
     res.setHeader("Content-Type", "application/json");
     res.writeHead(200);
@@ -199,7 +182,6 @@ const handler = async (req, res) => {
         logger.verbose("Sending static build .build/index.js");
         res.end(fs.readFileSync(".build/index.js", { encoding: "utf-8" }));
       } else {
-        logger.info("Building bundle");
         build()
           .then((output) => {
             res.setHeader("Content-Type", "application/javascript");
