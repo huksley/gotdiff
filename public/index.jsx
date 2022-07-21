@@ -74,9 +74,6 @@ const ShowPackage = ({ name }) => {
   const [older, setOlder, key] = useStorage(name + "_older_version", undefined);
   const [latest, setLatest] = useStorage(name + "_latest_version", undefined);
 
-  console.info(name, "key", key);
-
-  const { cache } = useSWRConfig();
   const { data, isValidating, mutate, error } = useSWR(
     "/json?package=" + name,
     (key) => fetch(key).then((key) => key.json()),
@@ -85,7 +82,7 @@ const ShowPackage = ({ name }) => {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       revalidateOnMount: false,
-      fallbackData: cache.get("/json?package=" + name),
+      dedupingInterval: 10000,
       onFailure: () => {},
       onSuccess: () => {
         logger.info("Got data");
@@ -93,13 +90,6 @@ const ShowPackage = ({ name }) => {
       },
     }
   );
-
-  useEffect(() => {
-    if (!data && !isValidating && !error) {
-      logger.info("Mutating", data, isValidating);
-      mutate();
-    }
-  }, [data, isValidating]);
 
   const latestPackage = useMemo(() => {
     return latest ? data?.packages.find((c) => c.version === latest) : data?.latestPackage;

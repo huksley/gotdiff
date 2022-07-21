@@ -171,7 +171,7 @@ const handler = async (req, res) => {
           const json = await new Promise((resolve, reject) => {
             exec(
               "./tree.sh " + name + "@" + latest,
-              { maxBuffer: 16 * 1024 * 1024, timeout: 10000 },
+              { maxBuffer: 16 * 1024 * 1024, timeout: 30000 },
               (err, stdout, stderr) => {
                 if (err) {
                   logger.warn("Fetch tree failed", name, latest, err?.code, stderr);
@@ -211,7 +211,7 @@ const handler = async (req, res) => {
         npmUrl: "https://npmjs.com/package/" + name,
         packages: latestVersions.map((v) => packages.versions[v]),
         footprint: lock?.__size,
-        dependencies: Object.keys(lock?.packages)
+        dependencies: Object.keys(lock?.packages || [])
           .filter((name) => name.startsWith("node_modules/"))
           .filter((name) => {
             const p = lock?.packages[name];
