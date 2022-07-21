@@ -24,6 +24,7 @@
     "markdown-to-jsx": "^7.1.7",
     "mime-types": "^2.1.35",
     "nano": "^10.0.0",
+    "numeral": "^2.0.6",
     "query-string": "^7.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -37,8 +38,8 @@
     "@types/react": "^18.0.15",
     "@types/react-dom": "^18.0.6",
     "dotenv": "^16.0.1",
+    "esbuild": "^0.14.49",
     "livereload": "^0.9.3",
-    "nodemon": "^2.0.19",
-    "esbuild": "^0.14.49"
+    "nodemon": "^2.0.19"
   }
 }

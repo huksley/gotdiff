@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useParams, useLocation, useNavigate, useMatch } from "react-router-dom";
 import queryString from "query-string";
+import { logger } from "../logger";
 
 // Hook https://usehooks.com/useRouter/
 export function useRouter() {
@@ -10,8 +11,8 @@ export function useRouter() {
 
   // Return our custom router object
   // Memoize so that a new object is only returned if something changes
-  return useMemo(() => {
-    return {
+  return useMemo(
+    () => ({
       // For convenience add push(), replace(), pathname at top level
       push: (path) => navigate(path),
       replace: (path) => navigate(path, { replace: true }),
@@ -27,6 +28,7 @@ export function useRouter() {
       // access to extra React Router functionality if needed.
       location,
       history,
-    };
-  }, [params, location, history]);
+    }),
+    [params, location, history]
+  );
 }

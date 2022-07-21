@@ -9,6 +9,7 @@ import { logger } from "../logger";
 import { detailedDiff } from "deep-object-diff";
 import { BrowserRouter } from "react-router-dom";
 import { useRouter } from "./useRouter";
+import numeral from "numeral";
 const container = document.querySelector("#root");
 const root = ReactDOM.createRoot(container);
 
@@ -45,8 +46,8 @@ const Dependencies = ({ ignore, older, newer, title }) => {
         {Object.keys(diff).map((action) =>
           Object.keys(diff[action])
             .filter((name) => !ignore.find((prefix) => name.startsWith(prefix)))
-            .map((name) => (
-              <li>
+            .map((name, index) => (
+              <li key={index}>
                 <b>
                   {action}{" "}
                   <a href={"?package=" + name} rel="noreferrer">
@@ -68,12 +69,12 @@ const Dependencies = ({ ignore, older, newer, title }) => {
   ) : null;
 };
 
-const Hello = () => {
-  const router = useRouter();
-  const name = router.query?.package || "next";
+const ShowPackage = ({ name }) => {
   const [refresh, setRefresh] = useStorage("json_refresh_" + name);
-  const [older, setOlder] = useStorage(name + "_older_version", undefined);
+  const [older, setOlder, key] = useStorage(name + "_older_version", undefined);
   const [latest, setLatest] = useStorage(name + "_latest_version", undefined);
+
+  console.info(name, "key", key);
 
   const { cache } = useSWRConfig();
   const { data, isValidating, mutate, error } = useSWR(
@@ -126,7 +127,7 @@ const Hello = () => {
   return (
     <div>
       <h2>
-        {data?.name}{" "}
+        {name}{" "}
         <a href={data?.url}>
           <img src="/github.svg" height="24" />
         </a>{" "}
@@ -134,7 +135,7 @@ const Hello = () => {
           <img src="/npm.svg" height="18" />
         </a>
       </h2>
-      <p>
+      <div>
         <sub>
           {latestPackage?.description ? markdown(latestPackage?.description) : ""} (last updated{" "}
           {refresh ? new Date(refresh).toISOString() : "unknown"}){error && <div>Error {error?.message}</div>}{" "}
@@ -149,12 +150,12 @@ const Hello = () => {
           </a>{" "}
           {isValidating ? "Loading..." : ""}
         </sub>
-      </p>
+      </div>
       <h3>Previous {older || data?.older}</h3>
       <sub>
         Pick previous version{" "}
         {data?.latestVersions.map((v, index) => (
-          <span>
+          <span key={index}>
             {index > 0 ? ", " : ""}
             <a
               href="#"
@@ -169,13 +170,13 @@ const Hello = () => {
         ))}
       </sub>
       <p>
-        {olderPackage?.dist?.fileCount} files, {olderPackage?.dist?.unpackedSize} bytes
+        {olderPackage?.dist?.fileCount} files, {numeral(olderPackage?.dist?.unpackedSize).format("0b")}
       </p>
       <h3>Latest {latest || data?.latest}</h3>
       <sub>
         Pick latest version{" "}
         {data?.latestVersions.map((v, index) => (
-          <span>
+          <span key={index}>
             {index > 0 ? ", " : ""}
             <a
               href="#"
@@ -192,7 +193,7 @@ const Hello = () => {
       <p>
         {latestPackage?.dist?.fileCount} files (Δ{" "}
         {Math.round((100.0 * latestPackage?.dist?.fileCount) / olderPackage?.dist?.fileCount) - 100.0}%),{" "}
-        {latestPackage?.dist?.unpackedSize} bytes (Δ{" "}
+        {numeral(latestPackage?.dist?.unpackedSize).format("0b")} (Δ{" "}
         {Math.round((100.0 * latestPackage?.dist?.unpackedSize) / olderPackage?.dist?.unpackedSize) - 100.0}
         %),{" "}
       </p>
@@ -211,6 +212,11 @@ const Hello = () => {
         ignore={["@" + latestPackage?.name + "/"]}
       />
 
+      <h3>Latest version footprint</h3>
+      <div>
+        <b>{numeral(data?.footprint).format("0b")}</b>, <b>{data?.dependencies?.length}</b> packages
+      </div>
+
       <div>
         <h4>
           GitHub release ChangeLog {latestRelease?.name || latestRelease?.tag_name} published{" "}
@@ -218,7 +224,7 @@ const Hello = () => {
         </h4>
         <a href={data?.url + "/releases/tag/" + latestRelease?.tag_name}>Open release</a>{" "}
         <a href={data?.url + "/compare/v" + olderPackage?.version + "..v" + latestPackage?.version}>Got diff!</a>
-        <p>{latestRelease?.body ? markdown(urls(latestRelease?.body, data?.url)) : undefined}</p>
+        <div>{latestRelease?.body ? markdown(urls(latestRelease?.body, data?.url)) : undefined}</div>
       </div>
     </div>
   );
@@ -235,6 +241,76 @@ function ErrorFallback({ error, resetErrorBoundary }) {
   );
 }
 
+const Page = () => {
+  const router = useRouter();
+  const [name, setName] = useState(router.query?.package || "next");
+  const [typed, setTyped] = useState();
+
+  useEffect(() => {
+    if (name != router.query.package) {
+      setName(router.query.package);
+    }
+  }, [name, setName, router]);
+
+  return (
+    <div>
+      <h1>
+        <a href="">Gotdiff?</a>{" "}
+        <button onClick={(_) => (window.location = "https://www.producthunt.com/posts/gotdiff")}>
+          Check my project
+        </button>
+      </h1>
+      <div>
+        Check dependencies, updates and new releases. Popular packages:{" "}
+        {["next", "next-auth", "react", "sharp", "date-fns", "ramda", "swr"].map((name, index) => (
+          <span key={name}>
+            {index > 0 ? ", " : ""}
+            <a
+              href={"?package=" + name}
+              onClick={(event) => {
+                event.preventDefault();
+                router.push("?package=" + name);
+                setName(name);
+              }}
+            >
+              {name}
+            </a>
+          </span>
+        ))}
+      </div>
+      <div>
+        <input
+          type="text"
+          size={12}
+          value={typed}
+          onChange={(event) => setTyped(event.target.value)}
+          placeholder="Package name"
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && typed) {
+              router.push("?package=" + typed);
+              setName(typed);
+            }
+          }}
+        />
+
+        <button
+          onClick={(event) => {
+            event.preventDefault();
+            if (typed) {
+              setName(typed);
+              router.push("?package=" + typed);
+            }
+          }}
+        >
+          Check
+        </button>
+      </div>
+      <hr />
+      <ShowPackage name={name || "next"} />
+    </div>
+  );
+};
+
 root.render(
   <ErrorBoundary FallbackComponent={ErrorFallback}>
     <SWRConfig
@@ -243,25 +319,7 @@ root.render(
       }}
     >
       <BrowserRouter>
-        <div>
-          <h1>
-            <a href="">Gotdiff?</a>{" "}
-            <button onClick={(_) => (window.location = "https://www.producthunt.com/posts/gotdiff")}>
-              Check my project
-            </button>
-          </h1>
-          <div>
-            Check dependencies, updates and new releases. Popular packages:{" "}
-            {["next", "next-auth", "react", "sharp", "date-fns", "ramda", "swr"].map((name, index) => (
-              <span>
-                {index > 0 ? ", " : ""}
-                <a href={"?package=" + name}>{name}</a>
-              </span>
-            ))}
-          </div>
-          <hr />
-          <Hello />
-        </div>
+        <Page />
       </BrowserRouter>
     </SWRConfig>
   </ErrorBoundary>

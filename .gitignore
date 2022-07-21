@@ -4,3 +4,5 @@ node_modules
 .env*
 .build
 greenlock.d
+test.js
+skimdb.json

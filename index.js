@@ -12,6 +12,7 @@ const { logger } = require("./logger");
 const mime = require("mime-types");
 const { build } = require("./build");
 const { request } = require("./request");
+const { exec } = require("child_process");
 
 const handler = async (req, res) => {
   if (req.url != "/api/health" && req.url != "/c" && !req.url.endsWith(".svg")) {
@@ -61,13 +62,18 @@ const handler = async (req, res) => {
       name + "-package",
       async () => {
         logger.info("Query NPMJS", name);
-        return await db.get(name);
+        try {
+          return await db.get(name);
+        } catch (e) {
+          logger.warn("Error fetching", name, e);
+          return {};
+        }
       },
       24 * 3600 * 1000
     );
     logger.info("Query NPMDB done in", Date.now() - st, "ms");
 
-    const allVersions = Object.keys(packages.versions)
+    const allVersions = Object.keys(packages.versions || [])
       .filter(
         (v) =>
           !v.includes("canary") &&
@@ -81,13 +87,13 @@ const handler = async (req, res) => {
     const latest = allVersions[allVersions.length - 1];
     const older = allVersions[allVersions.length - 2];
 
-    const olderPackages = Object.keys(packages.versions)
+    const olderPackages = Object.keys(packages.versions || [])
       .filter((v) => v === older)
       .map((ver) => ({
         ...packages.versions[older],
       }));
     const olderPackage = olderPackages[0];
-    const latestPackages = Object.keys(packages.versions)
+    const latestPackages = Object.keys(packages.versions || [])
       .filter((v) => v === latest)
       .map((ver) => ({
         ...packages.versions[ver],
@@ -97,6 +103,9 @@ const handler = async (req, res) => {
     let repoUrl = olderPackage?.repository?.url;
     if (repoUrl?.startsWith("git+https")) {
       repoUrl = repoUrl.replace("git+https", "https");
+    }
+    if (repoUrl?.startsWith("git+ssh://")) {
+      repoUrl = repoUrl.replace("git+ssh://", "https://");
     }
     if (repoUrl?.startsWith("git://")) {
       repoUrl = repoUrl.replace("git://", "https://");
@@ -153,6 +162,40 @@ const handler = async (req, res) => {
     latestRelease = releases.find(matchRelease(latest));
     const latestVersions = allVersions.length > 15 ? allVersions.slice(allVersions.length - 15) : allVersions;
 
+    logger.info("Fetching tree for", name, latest);
+    const st2 = Date.now();
+    const tree = await cache.getset(
+      name + "_package_lock6_" + latest,
+      async () => {
+        try {
+          const json = await new Promise((resolve, reject) => {
+            exec(
+              "./tree.sh " + name + "@" + latest,
+              { maxBuffer: 16 * 1024 * 1024, timeout: 10000 },
+              (err, stdout, stderr) => {
+                if (err) {
+                  logger.warn("Fetch tree failed", name, latest, err?.code, stderr);
+                  reject(new Error("Fetch failed " + name + "@" + latest));
+                } else {
+                  logger.info("Fetched tree", name, stderr);
+                  resolve(stdout);
+                }
+              }
+            );
+          });
+
+          return json;
+        } catch (e) {
+          logger.warn("Fetch failed", e);
+          return null;
+        }
+      },
+      24 * 3600 * 1000
+    );
+
+    logger.info("Fetched tree in", Date.now() - st2, "ms, ", tree?.length, "bytes");
+    const lock = tree ? JSON.parse(tree) : undefined;
+
     res.end(
       JSON.stringify({
         allVersions,
@@ -167,6 +210,13 @@ const handler = async (req, res) => {
         url: repoUrl,
         npmUrl: "https://npmjs.com/package/" + name,
         packages: latestVersions.map((v) => packages.versions[v]),
+        footprint: lock?.__size,
+        dependencies: Object.keys(lock?.packages)
+          .filter((name) => name.startsWith("node_modules/"))
+          .filter((name) => {
+            const p = lock?.packages[name];
+            return !p.peer;
+          }),
       })
     );
   } else {
