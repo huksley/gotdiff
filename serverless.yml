@@ -1,0 +1,53 @@
+service: gotdiff
+configValidationMode: warn
+frameworkVersion: "3"
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs16.x
+  region: eu-west-1
+  deploymentPrefix: serverless
+  logRetentionInDays: 30
+  apiGateway:
+    shouldStartNameWithService: true
+  # optional, in MB, default is 1024, min is 128
+  memorySize: 1024
+  # If lambda have SQS as source, SQS visibility timeout must be at least x3 of function timeout
+  timeout: 600
+  # optional, default is true
+  versionFunctions: false
+  tags:
+    project: "gotdiff"
+  stackTags:
+    project: "gotdiff"
+  deploymentBucket:
+    blockPublicAccess: true
+    tags:
+      project: "gotdiff"
+  environment:
+    GITHUB_TOKEN: ${env:GITHUB_TOKEN}
+    QUERY_TOKEN: ${env:QUERY_TOKEN}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - s3:*
+          Resource:
+            - "*"
+
+plugins:
+  - serverless-esbuild
+
+custom:
+  esbuild:
+    keepOutputDirectory: true
+    packagePath: "../package.json"
+
+functions:
+  ecs:
+    handler: serverless.handler
+    url: true
+    reservedConcurrency: 10
+

@@ -32,7 +32,7 @@ export const request = async (url, { method, body, headers }) => {
         headers,
       },
       (res) => {
-        logger.verbose("Got response", res.statusCode, res.statusMessage);
+        logger.verbose("Got response", res.statusCode, res.statusMessage, res.headers["content-type"]);
 
         // Collect body
         let data = "";

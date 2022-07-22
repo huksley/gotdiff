@@ -103,7 +103,7 @@ export const handler = async (req, res) => {
   }
 };
 
-if (import.meta.url == "file://" + process.argv[1]) {
+if (import.meta.url == "file://" + process.argv[1] + ".js" || import.meta.url == "file://" + process.argv[1]) {
   const server = http.createServer(handler);
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 8080;
   logger.info("Starting server on", port);

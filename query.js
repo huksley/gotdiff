@@ -112,32 +112,43 @@ export const queryPackage = async (name) => {
   const latestRelease = releases.find(matchRelease(latest));
   const latestVersions = allVersions.length > 15 ? allVersions.slice(allVersions.length - 15) : allVersions;
 
-  logger.info("Fetching tree for", name, latest);
+  logger.info("Fetching tree for", name, latest, process.env.QUERY_URL);
   const st2 = Date.now();
   const tree = await cache.getset(
-    name + "_package_lock6_" + latest,
+    name + "_package_lock_" + latest + Date.now(),
     async () => {
-      try {
-        const json = await new Promise((resolve, reject) => {
-          exec(
-            "./tree.sh " + name + "@" + latest,
-            { maxBuffer: 16 * 1024 * 1024, timeout: 30000 },
-            (err, stdout, stderr) => {
-              if (err) {
-                logger.warn("Fetch tree failed", name, latest, err?.code, stderr);
-                reject(new Error("Fetch failed " + name + "@" + latest));
-              } else {
-                logger.info("Fetched tree", name, stderr);
-                resolve(stdout);
-              }
-            }
-          );
+      if (process.env.QUERY_URL) {
+        const r = await request(process.env.QUERY_URL + "?name=" + name + "&latest=" + latest, {
+          headers: {
+            Accept: "application/json",
+            ["X-Auth-Token"]: process.env.QUERY_TOKEN || "test",
+          },
         });
+        logger.info("Got tree for", name, r.body);
+        return JSON.stringify(r.body);
+      } else {
+        try {
+          const json = await new Promise((resolve, reject) => {
+            exec(
+              "./tree.sh " + name + "@" + latest,
+              { maxBuffer: 16 * 1024 * 1024, timeout: 30000 },
+              (err, stdout, stderr) => {
+                if (err) {
+                  logger.warn("Fetch tree failed", name, latest, err?.code, stderr);
+                  reject(new Error("Fetch failed " + name + "@" + latest));
+                } else {
+                  logger.info("Fetched tree", name, stderr);
+                  resolve(stdout);
+                }
+              }
+            );
+          });
 
-        return json;
-      } catch (e) {
-        logger.warn("Fetch failed", e);
-        return null;
+          return json;
+        } catch (e) {
+          logger.warn("Fetch failed", e);
+          return null;
+        }
       }
     },
     24 * 3600 * 1000
