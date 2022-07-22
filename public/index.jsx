@@ -245,7 +245,7 @@ const Page = () => {
   return (
     <div>
       <h1>
-        <a href="">Gotdiff?</a>{" "}
+        <a href="">gotdiff?</a>{" "}
         <button onClick={(_) => (window.location = "https://www.producthunt.com/posts/gotdiff")}>
           Check my project
         </button>

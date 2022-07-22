@@ -1,8 +1,8 @@
-const fs = require("fs");
-const { exec } = require("child_process");
+import fs from "fs";
+import { exec } from "child_process";
+import { logger } from "./logger.js";
 
-const { logger } = require("./logger");
-const build = () =>
+export const build = () =>
   new Promise((resolve, reject) => {
     const st = Date.now();
     logger.info("Building client side...");
@@ -27,11 +27,7 @@ const build = () =>
     );
   });
 
-module.exports = {
-  build,
-};
-
-if (require.main === module) {
+if (import.meta.url === "file://" + process.argv[1] + ".js") {
   fs.mkdirSync(".build", { recursive: true });
   build()
     .then((output) => {

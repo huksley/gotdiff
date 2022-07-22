@@ -1,7 +1,7 @@
-const https = require("https");
-const { logger } = require("./logger");
+import { request as httpsRequest } from "https";
+import { logger } from "./logger.js";
 
-const request = async (url, { method, body, headers }) => {
+export const request = async (url, { method, body, headers }) => {
   const payload = body ? JSON.stringify(body) : undefined;
   headers = {
     "User-Agent": "Mozilla 55 (like IE 6.0; created by huksley)",
@@ -24,7 +24,7 @@ const request = async (url, { method, body, headers }) => {
   );
 
   return new Promise((resolve, reject) => {
-    const req = https.request(
+    const req = httpsRequest(
       url,
       {
         timeout: 10000,
@@ -66,4 +66,3 @@ const request = async (url, { method, body, headers }) => {
     req.end();
   });
 };
-exports.request = request;

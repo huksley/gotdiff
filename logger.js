@@ -18,7 +18,7 @@ const _prefix = process.env.NODE_ENV === "production" ? "" : "dev ";
  * }
  * ```
  */
-const logger = {
+export const logger = {
   isVerbose:
     process.env.LOG_VERBOSE && (process.env.LOG_VERBOSE === "1" || process.env.LOG_VERBOSE === "true") ? true : false,
   info: console.info.bind(console.info, _prefix + "%s"),
@@ -28,8 +28,4 @@ const logger = {
       : () => {},
   warn: console.warn.bind(console.info, _prefix + "%s"),
   error: console.error.bind(console.info, _prefix + "%s"),
-};
-
-module.exports = {
-  logger,
 };

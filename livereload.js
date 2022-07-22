@@ -1,11 +1,13 @@
-const livereload = require("livereload");
-const { logger } = require("./logger");
+import livereload from "livereload";
+import { logger } from "./logger.js";
+
+logger.info("Starting livereload server");
 
 const server = livereload.createServer({
   extraExts: ["ejs", "jsx"],
 });
 
-server.watch([__dirname + "/public", __dirname + "/views"]);
+server.watch(["./public", "./views"]);
 
 server.server.once("connection", () => {
   setTimeout(() => {
@@ -13,5 +15,3 @@ server.server.once("connection", () => {
     server.refresh("/");
   }, 100);
 });
-
-global.livereload = true;

@@ -1,9 +1,7 @@
-process.env.NODE_ENV = "production";
-process.env.AWS_EXECUTION_ENV = "nodejs";
-
-const fs = require("fs");
-require("dotenv/config");
-const { handler } = require("./index.js");
+import fs from "fs";
+import "dotenv/config";
+import greenlock from "greenlock-express";
+import { handler } from "./index.js";
 
 if (!fs.existsSync("greenlock.d/config.json")) {
   fs.mkdirSync("greenlock.d", { recursive: true });
@@ -12,7 +10,7 @@ if (!fs.existsSync("greenlock.d/config.json")) {
     JSON.stringify(
       {
         defaults: {},
-        sites: [{ subject: "gotdiff.com", altnames: ["gotdiff.com", "www.gotdiff.com"] }],
+        sites: [{ subject: process.env.DOMAIN, altnames: [process.env.DOMAIN, "www." + process.env.DOMAIN] }],
       },
       null,
       2
@@ -20,11 +18,13 @@ if (!fs.existsSync("greenlock.d/config.json")) {
   );
 }
 
-require("greenlock-express")
+process.env.NODE_ENV = "production";
+
+greenlock
   .init({
-    packageRoot: __dirname,
+    packageRoot: ".",
     configDir: "./greenlock.d",
-    maintainerEmail: process.env.EMAIL || "ruslanfg@protonmail.com",
+    maintainerEmail: process.env.EMAIL,
     cluster: false,
   })
   // Serves on 80 and 443
