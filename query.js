@@ -118,13 +118,14 @@ export const queryPackage = async (name) => {
     name + "_package_lock_" + latest + Date.now(),
     async () => {
       if (process.env.QUERY_URL) {
-        const r = await request(process.env.QUERY_URL + "?name=" + name + "&latest=" + latest, {
+        const r = await request(process.env.QUERY_URL + "?name=" + name + "&version=" + latest, {
           headers: {
             Accept: "application/json",
             ["X-Auth-Token"]: process.env.QUERY_TOKEN || "test",
           },
+          timeout: 100000,
         });
-        logger.info("Got tree for", name, r.body);
+        logger.info("Got tree for", name, latest);
         return JSON.stringify(r.body);
       } else {
         try {

@@ -1,7 +1,7 @@
 import { request as httpsRequest } from "https";
 import { logger } from "./logger.js";
 
-export const request = async (url, { method, body, headers }) => {
+export const request = async (url, { method, body, headers, timeout }) => {
   const payload = body ? JSON.stringify(body) : undefined;
   headers = {
     "User-Agent": "Mozilla 55 (like IE 6.0; created by huksley)",
@@ -27,7 +27,7 @@ export const request = async (url, { method, body, headers }) => {
     const req = httpsRequest(
       url,
       {
-        timeout: 10000,
+        timeout: timeout || 10000,
         method: method || "GET",
         headers,
       },
@@ -53,8 +53,7 @@ export const request = async (url, { method, body, headers }) => {
           } else {
             logger.verbose("Reject", res.statusCode, data);
             const err = new Error("HTTP response " + url + " " + res.statusCode + " " + JSON.stringify(data));
-            err.res = res;
-            err.req = req;
+            err.statusCode = res.statusCode;
             reject(err);
           }
         });
